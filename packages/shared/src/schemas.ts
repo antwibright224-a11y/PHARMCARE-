@@ -1,0 +1,13 @@
+import { z } from 'zod';
+
+export const loginSchema = z.object({ email: z.email(), password: z.string().min(1), verificationMethod: z.enum(['authenticator', 'email']).optional().default('authenticator') });
+export const signupSchema = z.object({ name: z.string().trim().min(2).max(120), email: z.string().trim().email().toLowerCase(), password: z.string().min(12).max(100), requestedRole: z.enum(['SUPER_ADMIN', 'PHARMACY_MANAGER', 'PHARMACIST', 'CASHIER', 'INVENTORY_MANAGER']) }).strict();
+export const medicineSchema = z.object({ name: z.string().min(2).max(150), genericName: z.string().max(150).optional().default(''), sku: z.string().min(2).max(50), barcode: z.string().max(100).optional().nullable(), category: z.string().min(2).max(80), dosageForm: z.string().min(2).max(80), strength: z.string().min(1).max(80), manufacturer: z.string().max(120).optional().default(''), prescriptionRequired: z.boolean().default(false), sellingPrice: z.number().nonnegative(), reorderLevel: z.number().int().nonnegative().default(10) });
+export const saleSchema = z.object({ items: z.array(z.object({ medicineId: z.string().min(1), quantity: z.number().int().positive().max(10000) })).min(1), paymentMethod: z.enum(['CASH', 'MOBILE_MONEY', 'CARD', 'BANK_TRANSFER', 'SPLIT']), payments: z.array(z.object({ method: z.enum(['CASH', 'MOBILE_MONEY', 'CARD', 'BANK_TRANSFER']), amount: z.number().positive(), reference: z.string().max(120).optional().default('') })).min(2).optional(), paymentReference: z.string().max(120).optional().default(''), prescriptionReference: z.string().max(120).optional(), discount: z.number().nonnegative().optional().default(0) }).superRefine((value, ctx) => { if (value.paymentMethod === 'SPLIT' && !value.payments) ctx.addIssue({ code: 'custom', path: ['payments'], message: 'Split payments require at least two payment lines' }); if (value.paymentMethod !== 'SPLIT' && value.payments) ctx.addIssue({ code: 'custom', path: ['payments'], message: 'Payment lines are only used for split payment' }); });
+export const expenseSchema = z.object({ category: z.string().min(2).max(80), amount: z.number().positive(), date: z.coerce.date().optional(), note: z.string().max(500).optional(), paymentMethod: z.enum(['CASH', 'MOBILE_MONEY', 'CARD', 'BANK_TRANSFER']) });
+export const purchaseOrderSchema = z.object({ supplierId: z.string().min(1), notes: z.string().max(500).optional(), lines: z.array(z.object({ medicineId: z.string().min(1), quantity: z.number().int().positive(), unitCost: z.number().nonnegative() })).min(1) });
+
+export type MedicineInput = z.infer<typeof medicineSchema>;
+export type SignupInput = z.infer<typeof signupSchema>;
+export type SaleInput = z.infer<typeof saleSchema>;
+export type ExpenseInput = z.infer<typeof expenseSchema>;

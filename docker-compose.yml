@@ -1,0 +1,19 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: pharmacare
+      POSTGRES_PASSWORD: pharmacare_dev
+      POSTGRES_DB: pharmacare
+    ports:
+      - "5432:5432"
+    volumes:
+      - pharmacare_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U pharmacare -d pharmacare"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+volumes:
+  pharmacare_pgdata:
