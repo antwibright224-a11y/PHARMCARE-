@@ -1,5 +1,6 @@
 import { can, currentUser } from '@/lib/auth';
 import { db } from '@/lib/db';
+import { passwordHashSecurityStatus } from '@/lib/password-crypto';
 import { endOfDayInTimezone, startOfDayInTimezone } from '@pharmacare/shared';
 
 export async function GET(request: Request) {
@@ -23,7 +24,25 @@ export async function GET(request: Request) {
   const medicines = await db.medicine.findMany({ where: { id: { in: topItems.map(x => x.medicineId) } }, select: { id: true, name: true, sku: true } });
   const byId = new Map(medicines.map(m => [m.id, m]));
   const revenue = Number(saleAgg._sum.total ?? 0); const cogs = Number(saleAgg._sum.costOfGoods ?? 0); const expenseTotal = Number(expenseAgg._sum.amount ?? 0);
-  const report = { period: { from, to }, sales: { count: saleAgg._count, revenue, discounts: Number(saleAgg._sum.discount ?? 0), tax: Number(saleAgg._sum.tax ?? 0), costOfGoods: cogs, grossProfit: revenue - cogs }, expenses: { count: expenseAgg._count, total: expenseTotal }, netAfterExpenses: revenue - cogs - expenseTotal, inventory: { units: inventory.reduce((n, b) => n + b.quantity, 0), costValue: inventory.reduce((n, b) => n + b.quantity * Number(b.purchaseCost), 0), retailValue: inventory.reduce((n, b) => n + b.quantity * Number(b.sellingPrice), 0) }, expiring: expiring.map(b => ({ medicine: b.medicine.name, sku: b.medicine.sku, batchNumber: b.batchNumber, expiryDate: b.expiryDate, quantity: b.quantity })), topProducts: topItems.map(i => ({ ...(byId.get(i.medicineId) ?? {}), units: i._sum.quantity ?? 0 })) };
+  const passwordAccounts = user.role === 'SUPER_ADMIN'
+    ? await db.user.findMany({ select: { name: true, email: true, role: true, disabled: true, twoFactorEnabled: true, passwordHash: true }, orderBy: { name: 'asc' } })
+    : null;
+  const accountSecurity = passwordAccounts && {
+    passwordHashing: {
+      algorithm: 'bcrypt',
+      workFactor: 12,
+      salt: 'A unique bcrypt salt is generated for each password.',
+      pepper: 'A server-managed HMAC-SHA-256 pepper is derived with HKDF and is never displayed.',
+    },
+    accounts: passwordAccounts.map(({ passwordHash, ...account }) => ({ ...account, passwordHashStatus: passwordHashSecurityStatus(passwordHash) })),
+    summary: {
+      total: passwordAccounts.length,
+      current: passwordAccounts.filter(account => passwordHashSecurityStatus(account.passwordHash) === 'CURRENT').length,
+      legacy: passwordAccounts.filter(account => passwordHashSecurityStatus(account.passwordHash) === 'LEGACY_REHASH_REQUIRED').length,
+      twoFactorEnabled: passwordAccounts.filter(account => account.twoFactorEnabled).length,
+    },
+  };
+  const report = { period: { from, to }, sales: { count: saleAgg._count, revenue, discounts: Number(saleAgg._sum.discount ?? 0), tax: Number(saleAgg._sum.tax ?? 0), costOfGoods: cogs, grossProfit: revenue - cogs }, expenses: { count: expenseAgg._count, total: expenseTotal }, netAfterExpenses: revenue - cogs - expenseTotal, inventory: { units: inventory.reduce((n, b) => n + b.quantity, 0), costValue: inventory.reduce((n, b) => n + b.quantity * Number(b.purchaseCost), 0), retailValue: inventory.reduce((n, b) => n + b.quantity * Number(b.sellingPrice), 0) }, expiring: expiring.map(b => ({ medicine: b.medicine.name, sku: b.medicine.sku, batchNumber: b.batchNumber, expiryDate: b.expiryDate, quantity: b.quantity })), topProducts: topItems.map(i => ({ ...(byId.get(i.medicineId) ?? {}), units: i._sum.quantity ?? 0 })), ...(accountSecurity ? { accountSecurity } : {}) };
   if (params.get('format') === 'csv') {
     const rows = [['Report', `Amount (${settings?.currency ?? 'GHS'})`], ['Revenue', revenue.toFixed(2)], ['Cost of goods sold', cogs.toFixed(2)], ['Gross profit', (revenue - cogs).toFixed(2)], ['Expenses', expenseTotal.toFixed(2)], ['Net after expenses', (revenue - cogs - expenseTotal).toFixed(2)]];
     const csv = rows.map(row => row.map(value => `"${String(value).replaceAll('"', '""')}"`).join(',')).join('\r\n');

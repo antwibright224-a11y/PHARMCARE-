@@ -3,6 +3,10 @@ import { compare, hash } from 'bcryptjs';
 
 const VERSION = 'pcv1:';
 
+export function passwordHashSecurityStatus(encoded: string) {
+  return encoded.startsWith(VERSION) ? 'CURRENT' : 'LEGACY_REHASH_REQUIRED';
+}
+
 function pepperKey() {
   const master = process.env.PASSWORD_PEPPER ?? process.env.SESSION_SECRET;
   if (!master || Buffer.byteLength(master) < 32) throw new Error('PASSWORD_PEPPER or SESSION_SECRET must contain at least 32 bytes');
@@ -18,6 +22,6 @@ export async function hashPassword(password: string) {
 }
 
 export async function verifyPassword(password: string, encoded: string) {
-  if (encoded.startsWith(VERSION)) return { valid: await compare(prehash(password), encoded.slice(VERSION.length)), needsUpgrade: false };
+  if (passwordHashSecurityStatus(encoded) === 'CURRENT') return { valid: await compare(prehash(password), encoded.slice(VERSION.length)), needsUpgrade: false };
   return { valid: await compare(password, encoded), needsUpgrade: true };
 }
