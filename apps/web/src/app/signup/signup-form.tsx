@@ -53,6 +53,20 @@ export default function SignupForm() {
 
   return <main className="login-shell">
     <section className="login-brand-side">
+      <div className="medical-atmosphere" aria-hidden="true">
+        <span className="atmosphere-glow atmosphere-glow-one"/>
+        <span className="atmosphere-glow atmosphere-glow-two"/>
+        <span className="floating-capsule floating-capsule-one"/>
+        <span className="floating-capsule floating-capsule-two"/>
+        <svg className="molecule molecule-one" viewBox="0 0 120 120" fill="none">
+          <path d="m27 36 31 16 31-20M58 52l-4 35m4-35 33 23" stroke="currentColor" strokeWidth="1.5"/>
+          <circle cx="27" cy="36" r="7" fill="currentColor"/><circle cx="58" cy="52" r="9" fill="currentColor"/><circle cx="89" cy="32" r="6" fill="currentColor"/><circle cx="54" cy="87" r="6" fill="currentColor"/><circle cx="91" cy="75" r="7" fill="currentColor"/>
+        </svg>
+        <svg className="medical-ecg" viewBox="0 0 640 100" fill="none">
+          <path d="M0 54h175l26-1 18-22 26 48 35-71 30 88 27-43h39l20 1h244" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+        </svg>
+        <span className="atmosphere-particle particle-one"/><span className="atmosphere-particle particle-two"/><span className="atmosphere-particle particle-three"/>
+      </div>
       <div className="login-brand"><span className="brand-mark"><Plus size={23}/></span><span><b>pharma<span>care</span></b><small>PHARMACY MANAGEMENT</small></span></div>
       <div className="login-hero"><span className="eyebrow">YOUR PHARMACY, IN GOOD HANDS</span><h1>Care runs better<br/>when everything<br/><em>works together.</em></h1><p>One thoughtful workspace for the medicines, people and moments that matter.</p><div className="login-assurance"><ShieldCheck size={17}/><span>Private, secure access for your pharmacy team</span></div></div>
       <div className="login-copyright">© 2026 PharmaCare · Made for better health</div>

@@ -81,6 +81,7 @@ All JSON endpoints use the same-origin HTTP-only session. Except login, endpoint
 | GET, PUT | `/api/settings` | Read/update pharmacy settings |
 | GET | `/api/reports?from=ISO&to=ISO` | Date-filtered sales, inventory, expiry and P&L summary |
 | GET | `/api/reports?from=ISO&to=ISO&format=csv` | CSV summary export |
+| GET | `/api/reports/password-security` | Super-admin password storage status report (never returns password hashes or salts) |
 | GET | `/api/notifications` | Current pharmacy notifications |
 | GET | `/api/audit` | Read audit history |
 | GET, POST | `/api/users` | List/create users |
@@ -93,10 +94,11 @@ All JSON endpoints use the same-origin HTTP-only session. Except login, endpoint
 
 ## Authentication and information security
 
-- Opening the application root (`/`) clears any existing browser sign-in and sends the user to `/login`; successful sign-in continues to the protected `/dashboard`.
+- Opening the application root (`/`) sends the user to `/login` without changing the existing sign-in; successful sign-in continues to the protected `/dashboard`.
 - The dashboard menu, summary cards, sales data, and management controls are tailored to each user's effective server-side role permissions. The same permission checks are applied by the API.
 - Password login is followed by a second-factor verification. Desktop browsers can enroll using the authenticator setup QR/key or switch to a one-time code sent to the account email; mobile browsers receive the email code automatically. TOTP codes rotate every 30 seconds.
 - Passwords use bcrypt with a random per-password salt and an HMAC-SHA-256 pepper pre-hash. Existing bcrypt hashes remain accepted and are upgraded after the user's next successful password check.
+- **Reports → Password Security Report** shows per-account password storage status to Super Admins without exposing password hashes or salts. Legacy bcrypt hashes are marked as requiring improvement until they are upgraded at sign-in. Account creator ownership is not stored in the existing schema, so the report covers all accounts in the existing user table rather than filtering by creator.
 - TOTP seeds are encrypted at rest using AES-256-GCM with a separate derived encryption key. Session tokens are random, stored only as HMAC-SHA-256 hashes, and issued in HTTP-only SameSite browser-session cookies (Secure over HTTPS); database sessions expire after 12 hours.
 - Desktop sign-in uses authenticator TOTP by default and offers an email-code fallback. Mobile sign-in sends a short-lived, single-use code by SMTP email; configure `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, and `SMTP_FROM` in `apps/web/.env.local` (and in the hosting environment in production). Codes expire after five minutes, allow at most five attempts, and email codes are rate-limited.
 - Signup lets a user request one of the existing roles. Every public signup receives Cashier permissions until a Super Admin approves the request in **Users & roles**.

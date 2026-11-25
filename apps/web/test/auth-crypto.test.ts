@@ -19,7 +19,9 @@ test('TOTP secrets are encrypted with authenticated encryption at rest', () => {
   const encrypted = encryptTotpSecret('JBSWY3DPEHPK3PXP');
   assert.notEqual(encrypted, 'JBSWY3DPEHPK3PXP');
   assert.equal(decryptTotpSecret(encrypted), 'JBSWY3DPEHPK3PXP');
-  const tampered = `${encrypted.slice(0, -1)}${encrypted.endsWith('A') ? 'B' : 'A'}`;
+  const [version, iv, tag, ciphertext] = encrypted.split('.');
+  const tamperedTag = `${tag[0] === 'A' ? 'B' : 'A'}${tag.slice(1)}`;
+  const tampered = `${version}.${iv}.${tamperedTag}.${ciphertext}`;
   assert.throws(() => decryptTotpSecret(tampered));
 });
 

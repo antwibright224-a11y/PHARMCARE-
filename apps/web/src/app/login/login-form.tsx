@@ -5,6 +5,21 @@ import Link from 'next/link';
 import { ArrowRight, KeyRound, LockKeyhole, Mail, Plus, ShieldCheck } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 
+async function fetchWithTimeout(input: string, init?: RequestInit) {
+  const controller = new AbortController();
+  const timeoutId = window.setTimeout(() => controller.abort(), 20_000);
+  try {
+    return await fetch(input, { ...init, signal: controller.signal });
+  } catch (error) {
+    if (controller.signal.aborted) {
+      throw new Error('The sign-in service did not respond in time. Check the server/database connection and try again.');
+    }
+    throw error;
+  } finally {
+    window.clearTimeout(timeoutId);
+  }
+}
+
 export default function Login() {
   const [error, setError] = useState('');
   const [pending, setPending] = useState(false);
@@ -19,7 +34,7 @@ export default function Login() {
     setPending(true);
     setError('');
     try {
-      const response = await fetch('/api/auth/two-factor/email', { method: 'POST' });
+      const response = await fetchWithTimeout('/api/auth/two-factor/email', { method: 'POST' });
       const result = await response.json().catch(() => null);
       if (!response.ok) throw new Error(result?.error ?? 'Could not send an email verification code.');
       setVerificationMethod('email');
@@ -37,14 +52,14 @@ export default function Login() {
     try {
       const endpoint = factorRequired ? '/api/auth/two-factor/verify' : '/api/auth/login';
       const mobileDevice = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
-      const response = await fetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(factorRequired ? { code: data.code } : { ...data, verificationMethod: mobileDevice ? 'email' : 'authenticator' }) });
+      const response = await fetchWithTimeout(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(factorRequired ? { code: data.code } : { ...data, verificationMethod: mobileDevice ? 'email' : 'authenticator' }) });
       const result = await response.json().catch(() => null);
       if (!response.ok) throw new Error(result?.error ?? 'Unable to sign in. Check the app server and database, then try again.');
 
       if (!factorRequired && result?.requiresTwoFactor) {
         setVerificationMethod(result.verificationMethod);
         if (result.setupRequired && result.verificationMethod === 'authenticator') {
-          const setupResponse = await fetch('/api/auth/two-factor/setup');
+          const setupResponse = await fetchWithTimeout('/api/auth/two-factor/setup');
           const setup = await setupResponse.json().catch(() => null);
           if (!setupResponse.ok) throw new Error(setup?.error ?? 'Could not set up your authenticator. Sign in again.');
           setSetupSecret(setup.secret);
@@ -60,6 +75,20 @@ export default function Login() {
 
   return <main className="login-shell">
     <section className="login-brand-side">
+      <div className="medical-atmosphere" aria-hidden="true">
+        <span className="atmosphere-glow atmosphere-glow-one"/>
+        <span className="atmosphere-glow atmosphere-glow-two"/>
+        <span className="floating-capsule floating-capsule-one"/>
+        <span className="floating-capsule floating-capsule-two"/>
+        <svg className="molecule molecule-one" viewBox="0 0 120 120" fill="none">
+          <path d="m27 36 31 16 31-20M58 52l-4 35m4-35 33 23" stroke="currentColor" strokeWidth="1.5"/>
+          <circle cx="27" cy="36" r="7" fill="currentColor"/><circle cx="58" cy="52" r="9" fill="currentColor"/><circle cx="89" cy="32" r="6" fill="currentColor"/><circle cx="54" cy="87" r="6" fill="currentColor"/><circle cx="91" cy="75" r="7" fill="currentColor"/>
+        </svg>
+        <svg className="medical-ecg" viewBox="0 0 640 100" fill="none">
+          <path d="M0 54h175l26-1 18-22 26 48 35-71 30 88 27-43h39l20 1h244" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+        </svg>
+        <span className="atmosphere-particle particle-one"/><span className="atmosphere-particle particle-two"/><span className="atmosphere-particle particle-three"/>
+      </div>
       <div className="login-brand"><span className="brand-mark"><Plus size={23}/></span><span><b>pharma<span>care</span></b><small>PHARMACY MANAGEMENT</small></span></div>
       <div className="login-hero"><span className="eyebrow">CARE, CLOSE AT HAND</span><h1>Here for<br/>your health.</h1><p>A trusted pharmacy team, ready with the care and guidance you need.</p><div className="login-assurance"><ShieldCheck size={17}/><span>Private, secure access for your pharmacy team</span></div></div>
       <div className="login-copyright">© 2026 PharmaCare · Made for better health</div>
